@@ -1,12 +1,15 @@
-import { View, Text, TextInput, Touchable, TouchableOpacity, StyleSheet } from 'react-native'
+import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, ToastAndroid } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { app } from '../../firebaseConfig'
 import { getFirestore, collection, query, getDocs } from 'firebase/firestore'
 import { Formik } from 'formik'
+import { Picker } from '@react-native-picker/picker'
+import * as ImagePicker from 'expo-image-picker';
 
 export default function AddPostScreen() {
     const db = getFirestore(app)
     const [categoryList, setCategoryList] = useState([])
+    const [image, setImage] = useState(null)
 
     const getCategories = async () => {
       setCategoryList([])
@@ -16,8 +19,44 @@ export default function AddPostScreen() {
         
         querySnapshot.forEach((doc) => {
             console.log(doc.data())
-            setCategoryList(categoryList => [...categoryList, doc.data])
+            setCategoryList(categoryList => [...categoryList, doc.data()])
         })
+    }
+
+    const pickImage = async () => {
+      // No permissions request is necessary for launching the image library
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+      });
+  
+      console.log(result);
+  
+      if (!result.canceled) {
+        setImage(result.assets[0].uri);
+      }
+    }
+
+    const onFormSubmit = (values) => {
+      values.image = image
+      console.log(values)
+    }
+
+    const inputValidation = (values) => {
+      errors = {}
+      if(!values.title){
+        ToastAndroid.show('Title must be present', ToastAndroid.SHORT)
+        errors.name = 'Title must be present'
+      }
+
+      if(!values.price){
+        ToastAndroid.show('Price must be present', ToastAndroid.SHORT)
+        errors.name = 'Price must be present'
+      }
+      
+      return errors
     }
 
     useEffect(() => {
@@ -31,10 +70,22 @@ export default function AddPostScreen() {
       </View>
       <Formik
         initialValues={{title:'', desc:'', category:'', address:'', price:'', image:''}}
-        onSubmit={value=>console.log(value)}
+        onSubmit={value => onFormSubmit(value)}
+        validate={values => inputValidation(values)}
       >
-        {({handleSubmit, handleBlur, handleChange, values}) => (
+        {({handleSubmit, handleBlur, handleChange, values, setFieldValue}) => (
           <View>
+            <TouchableOpacity onPress={pickImage}>
+              {image? 
+                <Image source={{uri: image}} 
+                  className="h-[100px] w-[100px] ml-[-10px]"
+                />:
+                <Image source={require('./../../assets/Images/img-placeholder.png')} 
+                  className="h-[100px] w-[100px] ml-[-10px]"
+                />
+              }
+            </TouchableOpacity>
+
             <TextInput 
               placeholder='Title' 
               className="border rounded-[10px] w-full p-3 mt-2 mb-3"
@@ -49,6 +100,16 @@ export default function AddPostScreen() {
               numberOfLines={5}
               onChangeText={handleChange('desc')}
             />
+            <View className="border rounded-[10px] w-full mt-2 mb-3 text-[15px]">
+              <Picker
+                selectedValue={values?.category}
+                onValueChange={item => setFieldValue('category', item)}
+              >
+                {categoryList && categoryList.map((item, index) => (
+                  <Picker.Item key={index} label={item.name} value={item.name}/>
+                ))}
+              </Picker>
+            </View>
             <TextInput 
               placeholder='Address' 
               className="border rounded-[10px] w-full p-3 mt-2 mb-3"
