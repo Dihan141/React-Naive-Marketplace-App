@@ -2,12 +2,14 @@ import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, ToastAndroi
 import React, { useEffect, useState } from 'react'
 import { app } from '../../firebaseConfig'
 import { getFirestore, collection, query, getDocs } from 'firebase/firestore'
+import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage"
 import { Formik } from 'formik'
 import { Picker } from '@react-native-picker/picker'
 import * as ImagePicker from 'expo-image-picker';
 
 export default function AddPostScreen() {
     const db = getFirestore(app)
+    const storage = getStorage()
     const [categoryList, setCategoryList] = useState([])
     const [image, setImage] = useState(null)
 
@@ -39,9 +41,21 @@ export default function AddPostScreen() {
       }
     }
 
-    const onFormSubmit = (values) => {
+    const onFormSubmit = async (values) => {
       values.image = image
       console.log(values)
+
+      const response = await fetch(image)
+      const blob = await response.blob()
+      const storageRef = ref(storage, 'posts/' + Date.now() + '.jpg')
+
+      uploadBytes(storageRef, blob).then((snapshot) => {
+        console.log('Uploaded a blob or file!')
+      }).then((response) => {
+        getDownloadURL(storageRef).then( async (url) => {
+          console.log(url)
+        })
+      })
     }
 
     const inputValidation = (values) => {
@@ -53,7 +67,7 @@ export default function AddPostScreen() {
 
       if(!values.price){
         ToastAndroid.show('Price must be present', ToastAndroid.SHORT)
-        errors.name = 'Price must be present'
+        errors.price = 'Price must be present'
       }
       
       return errors
@@ -78,7 +92,7 @@ export default function AddPostScreen() {
             <TouchableOpacity onPress={pickImage}>
               {image? 
                 <Image source={{uri: image}} 
-                  className="h-[100px] w-[100px] ml-[-10px]"
+                  className="h-[100px] w-[100px] ml-[-10px] rounded-[10px]"
                 />:
                 <Image source={require('./../../assets/Images/img-placeholder.png')} 
                   className="h-[100px] w-[100px] ml-[-10px]"
