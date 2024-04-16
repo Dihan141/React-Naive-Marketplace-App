@@ -1,17 +1,20 @@
-import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, ToastAndroid } from 'react-native'
+import { View, Text, TextInput, Image, TouchableOpacity, StyleSheet, ToastAndroid, Alert, ActivityIndicator } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { app } from '../../firebaseConfig'
-import { getFirestore, collection, query, getDocs } from 'firebase/firestore'
+import { getFirestore, collection, query, getDocs, addDoc } from 'firebase/firestore'
 import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage"
 import { Formik } from 'formik'
 import { Picker } from '@react-native-picker/picker'
 import * as ImagePicker from 'expo-image-picker';
+import { useUser } from '@clerk/clerk-expo'
 
 export default function AddPostScreen() {
     const db = getFirestore(app)
     const storage = getStorage()
+    const { user } = useUser()
     const [categoryList, setCategoryList] = useState([])
     const [image, setImage] = useState(null)
+    const [loading, setLoading] = useState(false)
 
     const getCategories = async () => {
       setCategoryList([])
@@ -42,9 +45,7 @@ export default function AddPostScreen() {
     }
 
     const onFormSubmit = async (values) => {
-      values.image = image
-      console.log(values)
-
+      setLoading(true)
       const response = await fetch(image)
       const blob = await response.blob()
       const storageRef = ref(storage, 'posts/' + Date.now() + '.jpg')
@@ -54,6 +55,17 @@ export default function AddPostScreen() {
       }).then((response) => {
         getDownloadURL(storageRef).then( async (url) => {
           console.log(url)
+          values.image = url
+          values.userId = user.id
+          values.userName = user.fullName
+          values.userEmail = user.primaryEmailAddress.emailAddress
+          const docRef = await addDoc(collection(db, 'Posts'), values)
+
+          if(docRef){
+            setLoading(false)
+            Alert.alert('Success!', 'Your post has been added successfully')
+            console.log("Document added")
+          }
         })
       })
     }
@@ -141,8 +153,13 @@ export default function AddPostScreen() {
             <TouchableOpacity 
               onPress={handleSubmit}
               className="bg-blue-500 p-4 mt-5 rounded-full"
+              disabled={loading}
             >
-              <Text className="text-white text-center">Submit</Text>
+              {loading? 
+                <ActivityIndicator color='#fff' />
+                : 
+                <Text className="text-white text-center">Submit</Text>
+              }
             </TouchableOpacity>
           </View>
         )}
