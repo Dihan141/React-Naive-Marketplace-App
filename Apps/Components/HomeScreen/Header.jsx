@@ -20,7 +20,10 @@ export default function Header() {
 
         <View className='rounded-full p-2 bg-white mt-5 px-5 flex flex-row items-center'>
             <Ionicons name='search' size={24} color='gray' />
-            <TextInput className='ml-2' placeholder='Search' />
+            <TextInput 
+                className='ml-2' 
+                placeholder='Search' 
+                onChangeText={(val) => console.log(val)}/>
         </View>
     </View>
   )
